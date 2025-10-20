@@ -1,0 +1,197 @@
+using System;
+using System.Collections.Generic;
+
+// Base class
+public class Item(string name, decimal pricePerUnit)
+{
+    public string Name = name;
+    public decimal PricePerUnit = pricePerUnit;
+    
+    public override string ToString()
+    {
+        return $"{Name}: {PricePerUnit} per unit";
+    }
+}
+// Sub classes
+public class BulkItem(string name, decimal pricePerUnit, string measurementUnit) : Item(name, pricePerUnit)
+{
+    public string MeasurementUnit = measurementUnit;
+
+    public override string ToString()
+    {
+        return base.ToString() + $" {MeasurementUnit}";
+    }
+}
+
+public class UnitItem(string name, decimal pricePerUnit, decimal weight) : Item(name, pricePerUnit)
+{
+    public decimal Weight = weight;
+
+    public override string ToString()
+    {
+        return base.ToString() + $" (Weight: {Weight} kg)";
+    }
+}
+
+//Collection class
+public class Inventory
+{
+    private Dictionary<Item, decimal> stock = new Dictionary<Item, decimal>();
+
+    public void AddItem(Item item, decimal amount)
+    {
+        stock[item] = amount;
+    }
+
+    public List<Item> LowStockItems()
+    {
+        var lowstock = new List<Item>();
+        foreach (var entry in stock)
+        {
+            if (entry.Value < 5)
+            {
+                lowstock.Add(entry.Key);
+            }
+        }
+        return lowstock;
+    }
+}
+// Orderline
+public class OrderLine(Item item, decimal quantity)
+{
+    public Item Item = item;
+    public decimal Quantity = quantity;
+
+    public decimal TotalPrice()
+    {
+        return Item.PricePerUnit * Quantity;
+    }
+
+    public override string ToString()
+    {
+        return $"{Item.Name} x {Quantity} = {TotalPrice()} kr";
+    }
+}
+
+public class Order(List<OrderLine> orderLines)
+{
+    public DateTime Time = DateTime.Now;
+    public List<OrderLine> OrderLines = orderLines;
+
+    public decimal TotalPrice()
+    {
+        decimal total = 0;
+        foreach (var line in OrderLines)
+        {
+            total += line.TotalPrice();
+        }
+        return total;
+    }
+
+    public override string ToString()
+    {
+        string result = $"Order placed at {Time}\n";
+        foreach (var line in OrderLines)
+        {
+            result += line.ToString() + "\n";
+        }
+        result += $"Total: {TotalPrice()} kr";
+        return result;
+    }
+}
+
+// Orderbook
+public class OrderBook
+{
+    public List<Order> QueuedOrders = new List<Order>();
+    public List<Order> ProcessedOrders = new List<Order>();
+
+    public void QueueOrder(Order order)
+    {
+        QueuedOrders.Add(order);
+    }
+
+    public void ProcessNextOrder()
+    {
+        if (QueuedOrders.Count > 0)
+        {
+            var order = QueuedOrders[0];
+            QueuedOrders.RemoveAt(0);
+            ProcessedOrders.Add(order);
+        }
+    }
+
+    public decimal TotalRevenue()
+    {
+        decimal total = 0;
+        foreach (var order in ProcessedOrders)
+        {
+            total += order.TotalPrice();
+        }
+        return total;
+    }
+}
+
+// Program test
+internal class Program
+{
+    private static void Main(string[] args)
+    {
+        var banana = new Item("Banana", 12.50m);
+        var rice = new BulkItem("Rice", 4.75m, "kg");
+        var bread = new UnitItem(name:"bread", 6.1m,0.25m);
+        
+        var inventory = new Inventory();
+        inventory.AddItem(banana, 10);
+        inventory.AddItem(rice, 2);
+        inventory.AddItem(bread, 3);
+        
+        Console.WriteLine(banana.ToString());
+        Console.WriteLine(rice.ToString());
+        Console.WriteLine(bread.ToString());
+
+        Console.WriteLine("\nLow stock itmes:");
+        foreach (var item in inventory.LowStockItems())
+        {
+            Console.WriteLine(item.ToString());
+        }
+        // Test OrderLine
+        Console.WriteLine("\n--- OrderLine Test ---");
+        var orderLine = new OrderLine(rice, 3);
+        Console.WriteLine(orderLine.ToString());
+        
+        var orderLines = new List<OrderLine>
+        {
+            new OrderLine(banana, 2),
+            new OrderLine(rice, 3),
+            new OrderLine(bread, 1)
+        };
+
+        var order = new Order(orderLines);
+        
+        Console.WriteLine(order.ToString());
+        Console.WriteLine("\n--- OrderBook Test ---");
+
+        var orderBook = new OrderBook();
+
+        var order1 = new Order(new List<OrderLine>
+        {
+            new OrderLine(banana, 2),
+            new OrderLine(rice, 1)
+        });
+
+        var order2 = new Order(new List<OrderLine>
+        {
+            new OrderLine(bread, 3)
+        });
+
+        orderBook.QueueOrder(order1);
+        orderBook.QueueOrder(order2);
+
+        orderBook.ProcessNextOrder();
+
+        Console.WriteLine($"Queued Orders: {orderBook.QueuedOrders.Count}");
+        Console.WriteLine($"Processed Orders: {orderBook.ProcessedOrders.Count}");
+        Console.WriteLine($"Total Revenue: {orderBook.TotalRevenue()} kr");
+    }
+}
